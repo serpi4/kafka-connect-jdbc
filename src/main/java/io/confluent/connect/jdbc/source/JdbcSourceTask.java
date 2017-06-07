@@ -16,6 +16,7 @@
 
 package io.confluent.connect.jdbc.source;
 
+import io.confluent.connect.jdbc.util.StringUtils;
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.config.types.Password;
 import org.apache.kafka.common.utils.SystemTime;
@@ -81,6 +82,8 @@ public class JdbcSourceTask extends SourceTask {
 
     List<String> tables = config.getList(JdbcSourceTaskConfig.TABLES_CONFIG);
     String query = config.getString(JdbcSourceTaskConfig.QUERY_CONFIG);
+    String namespacePrefix = config.getString(JdbcSourceTaskConfig.SCHEMA_NAMESPACE_PREFIX);
+    namespacePrefix = namespacePrefix.isEmpty() ? StringUtils.EMPTY_STRING : namespacePrefix.concat(".");
     if ((tables.isEmpty() && query.isEmpty()) || (!tables.isEmpty() && !query.isEmpty())) {
       throw new ConnectException("Invalid configuration: each JdbcSourceTask must have at "
                                         + "least one table assigned to it or one query specified");
@@ -125,6 +128,7 @@ public class JdbcSourceTask extends SourceTask {
 
     for (String tableOrQuery : tablesOrQuery) {
       final Map<String, String> partition;
+      String name;
       switch (queryMode) {
         case TABLE:
           if (validateNonNulls) {
@@ -132,10 +136,12 @@ public class JdbcSourceTask extends SourceTask {
           }
           partition = Collections.singletonMap(
               JdbcSourceConnectorConstants.TABLE_NAME_KEY, tableOrQuery);
+          name = namespacePrefix + tableOrQuery;
           break;
         case QUERY:
           partition = Collections.singletonMap(JdbcSourceConnectorConstants.QUERY_NAME_KEY,
                                                JdbcSourceConnectorConstants.QUERY_NAME_VALUE);
+          name = tableOrQuery;
           break;
         default:
           throw new ConnectException("Unexpected query mode: " + queryMode);
@@ -146,19 +152,19 @@ public class JdbcSourceTask extends SourceTask {
       boolean mapNumerics = config.getBoolean(JdbcSourceTaskConfig.NUMERIC_PRECISION_MAPPING_CONFIG);
 
       if (mode.equals(JdbcSourceTaskConfig.MODE_BULK)) {
-        tableQueue.add(new BulkTableQuerier(queryMode, tableOrQuery, schemaPattern,
+        tableQueue.add(new BulkTableQuerier(queryMode, tableOrQuery, name, schemaPattern,
                 topicPrefix, mapNumerics));
       } else if (mode.equals(JdbcSourceTaskConfig.MODE_INCREMENTING)) {
         tableQueue.add(new TimestampIncrementingTableQuerier(
-            queryMode, tableOrQuery, topicPrefix, null, incrementingColumn, offset,
+            queryMode, tableOrQuery, name, topicPrefix, null, incrementingColumn, offset,
                 timestampDelayInterval, schemaPattern, mapNumerics));
       } else if (mode.equals(JdbcSourceTaskConfig.MODE_TIMESTAMP)) {
         tableQueue.add(new TimestampIncrementingTableQuerier(
-            queryMode, tableOrQuery, topicPrefix, timestampColumn, null, offset,
+            queryMode, tableOrQuery, name, topicPrefix, timestampColumn, null, offset,
                 timestampDelayInterval, schemaPattern, mapNumerics));
       } else if (mode.endsWith(JdbcSourceTaskConfig.MODE_TIMESTAMP_INCREMENTING)) {
         tableQueue.add(new TimestampIncrementingTableQuerier(
-            queryMode, tableOrQuery, topicPrefix, timestampColumn, incrementingColumn,
+            queryMode, tableOrQuery, name, topicPrefix, timestampColumn, incrementingColumn,
                 offset, timestampDelayInterval, schemaPattern, mapNumerics));
       }
     }

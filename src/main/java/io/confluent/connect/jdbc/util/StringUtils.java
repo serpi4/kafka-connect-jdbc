@@ -22,6 +22,8 @@ package io.confluent.connect.jdbc.util;
  */
 public class StringUtils {
 
+  public static final String EMPTY_STRING = "";
+
   /**
    * Generate a String by appending all the @{elements}, converted to Strings, delimited by
    * @{delim}.

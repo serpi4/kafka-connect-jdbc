@@ -123,6 +123,10 @@ public class JdbcSourceConnectorConfig extends AbstractConfig {
   public static final String TABLE_BLACKLIST_DEFAULT = "";
   private static final String TABLE_BLACKLIST_DISPLAY = "Table Blacklist";
 
+  public static final String SCHEMA_NAMESPACE_PREFIX = "schema.namespace.prefix";
+  public static final String SCHEMA_NAMESPACE_PREFIX_DEFAULT = "";
+  public static final String SCHEMA_NAMESPACE_PREFIX_DISPLAY = "To be done";
+  private static final String SCHEMA_NAMESPACE_PREFIX_DOC = "To be done";
   public static final String SCHEMA_PATTERN_CONFIG = "schema.pattern";
   private static final String SCHEMA_PATTERN_DOC =
       "Schema pattern to fetch tables metadata from the database:\n"
@@ -202,6 +206,7 @@ public class JdbcSourceConnectorConfig extends AbstractConfig {
         .define(SCHEMA_PATTERN_CONFIG, Type.STRING, null, Importance.MEDIUM, SCHEMA_PATTERN_DOC, DATABASE_GROUP, 6, Width.SHORT, SCHEMA_PATTERN_DISPLAY)
         .define(TABLE_TYPE_CONFIG, Type.LIST, TABLE_TYPE_DEFAULT, Importance.LOW,
                 TABLE_TYPE_DOC, CONNECTOR_GROUP, 4, Width.MEDIUM, TABLE_TYPE_DISPLAY)
+        .define(SCHEMA_NAMESPACE_PREFIX, Type.STRING, SCHEMA_NAMESPACE_PREFIX_DEFAULT, Importance.MEDIUM, SCHEMA_NAMESPACE_PREFIX_DOC, DATABASE_GROUP, 4, Width.SHORT, SCHEMA_NAMESPACE_PREFIX_DISPLAY)
         .define(NUMERIC_PRECISION_MAPPING_CONFIG, Type.BOOLEAN, NUMERIC_PRECISION_MAPPING_DEFAULT, Importance.LOW, NUMERIC_PRECISION_MAPPING_DOC, DATABASE_GROUP, 4, Width.SHORT, NUMERIC_PRECISION_MAPPING_DISPLAY)
         .define(MODE_CONFIG, Type.STRING, MODE_UNSPECIFIED, ConfigDef.ValidString.in(MODE_UNSPECIFIED, MODE_BULK, MODE_TIMESTAMP, MODE_INCREMENTING, MODE_TIMESTAMP_INCREMENTING),
                 Importance.HIGH, MODE_DOC, MODE_GROUP, 1, Width.MEDIUM, MODE_DISPLAY, Arrays.asList(INCREMENTING_COLUMN_NAME_CONFIG, TIMESTAMP_COLUMN_NAME_CONFIG, VALIDATE_NON_NULL_CONFIG))

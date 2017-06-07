@@ -45,10 +45,10 @@ import io.confluent.connect.jdbc.util.DateTimeUtils;
 public class DataConverter {
   private static final Logger log = LoggerFactory.getLogger(JdbcSourceTask.class);
 
-  public static Schema convertSchema(String tableName, ResultSetMetaData metadata, boolean mapNumerics)
+  public static Schema convertSchema(String fullname, ResultSetMetaData metadata, boolean mapNumerics)
       throws SQLException {
     // TODO: Detect changes to metadata, which will require schema updates
-    SchemaBuilder builder = SchemaBuilder.struct().name(tableName);
+    SchemaBuilder builder = SchemaBuilder.struct().name(fullname);
     for (int col = 1; col <= metadata.getColumnCount(); col++) {
       addFieldSchema(metadata, col, builder, mapNumerics);
     }
@@ -391,7 +391,7 @@ public class DataConverter {
         if (mapNumerics) {
           ResultSetMetaData metadata = resultSet.getMetaData();
           int precision = metadata.getPrecision(col);
-          if (metadata.getScale(col) == 0 && precision < 19) { // integer
+          if (metadata.getScale(col) == 0 && precision < 19) {
             if (precision > 9) {
               colValue = resultSet.getLong(col);
             } else if (precision > 4) {
