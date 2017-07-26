@@ -96,6 +96,14 @@ public class JdbcSourceConnectorConfig extends AbstractConfig {
   public static final String INCREMENTING_COLUMN_NAME_DEFAULT = "";
   private static final String INCREMENTING_COLUMN_NAME_DISPLAY = "Incrementing Column Name";
 
+  public static final String KEY_COLUMN_NAME_CONFIG = "key.column.name";
+  private static final String KEY_COLUMN_NAME_DOC =
+          "The name of the key column to use while putting row to Kafka topic. Any empty value "
+                  + "indicates the column should be put to any partition. "
+                  + "This column can be nullable.";
+  public static final String KEY_COLUMN_NAME_DEFAULT = "";
+  private static final String KEY_COLUMN_NAME_DISPLAY = "Key Column Name";
+
   public static final String TIMESTAMP_COLUMN_NAME_CONFIG = "timestamp.column.name";
   private static final String TIMESTAMP_COLUMN_NAME_DOC =
       "The name of the timestamp column to use to detect new or modified rows. This column may "
@@ -212,6 +220,7 @@ public class JdbcSourceConnectorConfig extends AbstractConfig {
                 Importance.HIGH, MODE_DOC, MODE_GROUP, 1, Width.MEDIUM, MODE_DISPLAY, Arrays.asList(INCREMENTING_COLUMN_NAME_CONFIG, TIMESTAMP_COLUMN_NAME_CONFIG, VALIDATE_NON_NULL_CONFIG))
         .define(INCREMENTING_COLUMN_NAME_CONFIG, Type.STRING, INCREMENTING_COLUMN_NAME_DEFAULT, Importance.MEDIUM, INCREMENTING_COLUMN_NAME_DOC, MODE_GROUP, 2, Width.MEDIUM, INCREMENTING_COLUMN_NAME_DISPLAY,
                 MODE_DEPENDENTS_RECOMMENDER)
+        .define(KEY_COLUMN_NAME_CONFIG, Type.STRING, KEY_COLUMN_NAME_DEFAULT, Importance.LOW, KEY_COLUMN_NAME_DOC, CONNECTOR_GROUP, 6, Width.MEDIUM, KEY_COLUMN_NAME_DISPLAY)
         .define(TIMESTAMP_COLUMN_NAME_CONFIG, Type.STRING, TIMESTAMP_COLUMN_NAME_DEFAULT, Importance.MEDIUM, TIMESTAMP_COLUMN_NAME_DOC, MODE_GROUP, 3, Width.MEDIUM, TIMESTAMP_COLUMN_NAME_DISPLAY,
                 MODE_DEPENDENTS_RECOMMENDER)
         .define(VALIDATE_NON_NULL_CONFIG, Type.BOOLEAN, VALIDATE_NON_NULL_DEFAULT, Importance.LOW, VALIDATE_NON_NULL_DOC, MODE_GROUP, 4, Width.SHORT, VALIDATE_NON_NULL_DISPLAY,
