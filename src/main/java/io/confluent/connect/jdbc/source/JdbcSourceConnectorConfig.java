@@ -17,6 +17,7 @@
 package io.confluent.connect.jdbc.source;
 
 import io.confluent.connect.jdbc.util.JdbcUtils;
+import io.confluent.connect.jdbc.util.StringUtils;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.ConfigDef.Importance;
@@ -29,10 +30,7 @@ import org.apache.kafka.common.config.types.Password;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class JdbcSourceConnectorConfig extends AbstractConfig {
 
@@ -202,6 +200,19 @@ public class JdbcSourceConnectorConfig extends AbstractConfig {
       + "In most cases it only makes sense to have either TABLE or VIEW.";
   private static final String TABLE_TYPE_DISPLAY = "Table Types";
 
+  // default column prefix, full syntax : "column.default.<table>.<column>=<value>"
+  private static final String DEFAULT_COLUMN_PREFIX = "column.default.";
+
+  public void injectToDefaultProvider() {
+    DataConverter.setDefaultValueProvider(new DataConverter.DefaultValueProvider() {
+      @Override
+      public String getDefault(String tableName, String columnName) {
+        return getDefaultColumnValue(tableName, columnName);
+      }
+    });
+
+  }
+
   public static ConfigDef baseConfigDef() {
     return new ConfigDef()
         .define(CONNECTION_URL_CONFIG, Type.STRING, Importance.HIGH, CONNECTION_URL_DOC, DATABASE_GROUP, 1, Width.LONG, CONNECTION_URL_DISPLAY, Arrays.asList(TABLE_WHITELIST_CONFIG, TABLE_BLACKLIST_CONFIG))
@@ -236,10 +247,48 @@ public class JdbcSourceConnectorConfig extends AbstractConfig {
   public static final ConfigDef CONFIG_DEF = baseConfigDef();
 
   public JdbcSourceConnectorConfig(Map<String, String> props) {
-    super(CONFIG_DEF, props);
+    this(splitExtraProps(props));
+  }
+
+  private static List<Map<String,String>> splitExtraProps(Map<String,String> props) {
+  Map<String,String> basicProps = new HashMap<String, String>();
+  Map<String,String> extProps = new HashMap<String, String>();
+
+  for ( Map.Entry<String,String> e : props.entrySet() )
+    if (e.getKey().startsWith(DEFAULT_COLUMN_PREFIX)) {
+      extProps.put(e.getKey(), e.getValue());
+    } else
+      basicProps.put(e.getKey(), e.getValue());
+
+    return Arrays.asList(basicProps, extProps);
+  }
+
+
+  private Map<String,String> defaultColumnValues = new HashMap<String,String>();
+
+  public JdbcSourceConnectorConfig(List<Map<String, String>> splitProps) {
+    super(CONFIG_DEF, splitProps.get(0));
+
+    processExtraProps(splitProps.get(1));
+
     String mode = getString(JdbcSourceConnectorConfig.MODE_CONFIG);
     if (mode.equals(JdbcSourceConnectorConfig.MODE_UNSPECIFIED))
       throw new ConfigException("Query mode must be specified");
+  }
+
+  private void processExtraProps(Map<String, String> extraProps) {
+    // process extra settings
+    for ( Map.Entry<String,String> e : extraProps.entrySet() )
+      if (e.getKey().startsWith(DEFAULT_COLUMN_PREFIX)) {
+        defaultColumnValues.put(
+                e.getKey().substring(DEFAULT_COLUMN_PREFIX.length()).toLowerCase(),
+                e.getValue()
+        );
+      }
+  }
+
+  public String getDefaultColumnValue( String table, String column ) {
+    return defaultColumnValues.get(String.format("%s.%s", table, column).toLowerCase());
   }
 
   private static class TableRecommender implements Recommender {
@@ -296,7 +345,12 @@ public class JdbcSourceConnectorConfig extends AbstractConfig {
   }
 
   protected JdbcSourceConnectorConfig(ConfigDef subclassConfigDef, Map<String, String> props) {
-    super(subclassConfigDef, props);
+    this(subclassConfigDef, splitExtraProps(props));
+  }
+
+  private JdbcSourceConnectorConfig(ConfigDef subclassConfigDef, List<Map<String, String>> splitProps) {
+    super(subclassConfigDef, splitProps.get(0));
+    processExtraProps(splitProps.get(1));
   }
 
   public static void main(String[] args) {

@@ -16,14 +16,9 @@
 
 package io.confluent.connect.jdbc.source;
 
+import org.apache.kafka.connect.data.*;
 import org.apache.kafka.connect.data.Date;
-import org.apache.kafka.connect.data.Decimal;
-import org.apache.kafka.connect.data.Field;
-import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Schema.Type;
-import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.data.Time;
-import org.apache.kafka.connect.data.Timestamp;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
@@ -32,10 +27,7 @@ import org.junit.Test;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
-import java.util.Calendar;
-import java.util.GregorianCalendar;
-import java.util.List;
-import java.util.TimeZone;
+import java.util.*;
 
 import javax.sql.rowset.serial.SerialBlob;
 
@@ -50,7 +42,9 @@ public class JdbcSourceTaskConversionTest extends JdbcSourceTaskTestBase {
   @Before
   public void setup() throws Exception {
     super.setup();
-    task.start(singleTableConfig());
+    Map<String,String> tableConfig = singleTableConfig();
+    tableConfig.put( "column.default.test.id", "false" );
+    task.start(tableConfig);
   }
 
   @After
@@ -66,8 +60,10 @@ public class JdbcSourceTaskConversionTest extends JdbcSourceTaskTestBase {
 
   @Test
   public void testNullableBoolean() throws Exception {
-    typeConversion("BOOLEAN", true, false, Schema.OPTIONAL_BOOLEAN_SCHEMA, false);
-    typeConversion("BOOLEAN", true, null, Schema.OPTIONAL_BOOLEAN_SCHEMA, null);
+    Schema expectedSchema = SchemaBuilder.bool().optional().defaultValue(Boolean.FALSE).build();
+    typeConversion("BOOLEAN", true, false, expectedSchema, false);
+    typeConversion("BOOLEAN", true, true, expectedSchema, true);
+    typeConversion("BOOLEAN", true, null, expectedSchema, false);
   }
 
   @Test

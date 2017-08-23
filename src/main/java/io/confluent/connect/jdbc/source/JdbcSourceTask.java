@@ -71,6 +71,7 @@ public class JdbcSourceTask extends SourceTask {
   public void start(Map<String, String> properties) {
     try {
       config = new JdbcSourceTaskConfig(properties);
+      config.injectToDefaultProvider();
     } catch (ConfigException e) {
       throw new ConnectException("Couldn't start JdbcSourceTask due to configuration error", e);
     }

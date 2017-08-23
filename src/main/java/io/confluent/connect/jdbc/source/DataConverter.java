@@ -16,17 +16,12 @@
 
 package io.confluent.connect.jdbc.source;
 
-import org.apache.kafka.connect.data.Date;
-import org.apache.kafka.connect.data.Decimal;
-import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.SchemaBuilder;
-import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.data.Time;
-import org.apache.kafka.connect.data.Timestamp;
+import org.apache.kafka.connect.data.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.ObjectInput;
 import java.net.URL;
 import java.sql.Blob;
 import java.sql.Clob;
@@ -44,6 +39,16 @@ import io.confluent.connect.jdbc.util.DateTimeUtils;
  */
 public class DataConverter {
   private static final Logger log = LoggerFactory.getLogger(JdbcSourceTask.class);
+
+  public interface DefaultValueProvider {
+    String getDefault( String tableName, String columnName );
+  }
+
+  public static void setDefaultValueProvider(DefaultValueProvider defaultValueProvider) {
+    DataConverter.defaultValueProvider.set( defaultValueProvider );
+  }
+
+  private static ThreadLocal<DefaultValueProvider> defaultValueProvider = new ThreadLocal<DefaultValueProvider>();
 
   public static Schema convertSchema(String fullname, ResultSetMetaData metadata, boolean mapNumerics)
       throws SQLException {
@@ -73,6 +78,16 @@ public class DataConverter {
   }
 
 
+  private static String getDefaultValue( String table, String column ) {
+    DefaultValueProvider defaultValueProvider = DataConverter.defaultValueProvider.get();
+    String s = defaultValueProvider.getDefault(table, column);
+    if (null == s)
+      throw new IllegalArgumentException(
+              "No default value defined in configuration for table %s and field %s".format(table,column)
+        );
+    return s;
+  }
+
   private static void addFieldSchema(ResultSetMetaData metadata, int col,
                                      SchemaBuilder builder, boolean mapNumerics)
       throws SQLException {
@@ -97,7 +112,11 @@ public class DataConverter {
 
       case Types.BOOLEAN: {
         if (optional) {
-          builder.field(fieldName, Schema.OPTIONAL_BOOLEAN_SCHEMA);
+          Object defaultValue = Boolean.parseBoolean(
+                  getDefaultValue(metadata.getTableName(col), fieldName)
+              );
+          Schema schema = SchemaBuilder.bool().optional().defaultValue(defaultValue).build();
+          builder.field(fieldName, schema);
         } else {
           builder.field(fieldName, Schema.BOOLEAN_SCHEMA);
         }
