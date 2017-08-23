@@ -30,6 +30,7 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.SQLXML;
 import java.sql.Types;
+import java.util.function.Function;
 
 import io.confluent.connect.jdbc.util.DateTimeUtils;
 
@@ -78,14 +79,22 @@ public class DataConverter {
   }
 
 
-  private static String getDefaultValue( String table, String column ) {
+  private interface DefaultValueParser {
+    Object parse(String s);
+  }
+
+  private static Object getDefaultValue(DefaultValueParser p, String table, String column) {
     DefaultValueProvider defaultValueProvider = DataConverter.defaultValueProvider.get();
     String s = defaultValueProvider.getDefault(table, column);
-    if (null == s)
+    Object val = null;
+    if (null != s) {
+      val = p.parse(s);
+    } else {
       log.warn(
-              "No default value found in configuration for table {} and field {}", table,column
-        );
-    return s;
+              "No default value found in configuration for table {} and field {}", table, column
+      );
+    }
+    return val;
   }
 
   private static void addFieldSchema(ResultSetMetaData metadata, int col,
@@ -135,9 +144,14 @@ public class DataConverter {
 
       case Types.TINYINT: {
         if (optional) {
-          Object defaultValue = Byte.parseByte(
-                  getDefaultValue(metadata.getTableName(col), fieldName)
-          );
+          Object defaultValue = getDefaultValue(
+                  new DefaultValueParser() {
+                    @Override
+                    public Object parse(String s) {
+                      return Byte.parseByte(s);
+                    }
+                  }, metadata.getTableName(col), fieldName
+            );
           if (metadata.isSigned(col)) {
             Schema schema = SchemaBuilder.int8().optional().defaultValue(defaultValue).build();
             builder.field(fieldName, schema);
@@ -158,9 +172,14 @@ public class DataConverter {
       // 16 bit ints
       case Types.SMALLINT: {
         if (optional) {
-          Object defaultValue = Short.parseShort(
-                  getDefaultValue(metadata.getTableName(col), fieldName)
-          );
+          Object defaultValue =
+                  getDefaultValue(new DefaultValueParser() {
+                    @Override
+                    public Object parse(String s) {
+                      return Short.parseShort(s);
+                    }
+                  }, metadata.getTableName(col), fieldName
+            );
           if (metadata.isSigned(col)) {
             Schema schema = SchemaBuilder.int16().optional().defaultValue(defaultValue).build();
             builder.field(fieldName, schema);
