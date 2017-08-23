@@ -135,7 +135,17 @@ public class DataConverter {
       // ints <= 8 bits
       case Types.BIT: {
         if (optional) {
-          builder.field(fieldName, Schema.OPTIONAL_INT8_SCHEMA);
+            Object defaultValue = getDefaultValue(
+                    new DefaultValueParser() {
+                        @Override
+                        public Object parse(String s) {
+                            return Byte.parseByte(s);
+                        }
+                    }, metadata.getTableName(col), fieldName
+            );
+
+            Schema schema = SchemaBuilder.int8().optional().defaultValue(defaultValue).build();
+            builder.field(fieldName, schema);
         } else {
           builder.field(fieldName, Schema.INT8_SCHEMA);
         }
