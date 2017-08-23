@@ -82,8 +82,8 @@ public class DataConverter {
     DefaultValueProvider defaultValueProvider = DataConverter.defaultValueProvider.get();
     String s = defaultValueProvider.getDefault(table, column);
     if (null == s)
-      throw new IllegalArgumentException(
-              "No default value defined in configuration for table %s and field %s".format(table,column)
+      log.warn(
+              "No default value found in configuration for table {} and field {}", table,column
         );
     return s;
   }
