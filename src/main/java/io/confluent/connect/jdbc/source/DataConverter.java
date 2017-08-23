@@ -112,10 +112,10 @@ public class DataConverter {
 
       case Types.BOOLEAN: {
         if (optional) {
-          Object defaultValue = Boolean.parseBoolean(
+          Object defaultValue = null;/*Boolean.parseBoolean(
                   getDefaultValue(metadata.getTableName(col), fieldName)
-              );
-          Schema schema = SchemaBuilder.bool().optional().defaultValue(defaultValue).build();
+              );*/
+          Schema schema = SchemaBuilder.bool().optional()./*defaultValue(defaultValue).*/build();
           builder.field(fieldName, schema);
         } else {
           builder.field(fieldName, Schema.BOOLEAN_SCHEMA);
@@ -135,10 +135,15 @@ public class DataConverter {
 
       case Types.TINYINT: {
         if (optional) {
+          Object defaultValue = Byte.parseByte(
+                  getDefaultValue(metadata.getTableName(col), fieldName)
+          );
           if (metadata.isSigned(col)) {
-            builder.field(fieldName, Schema.OPTIONAL_INT8_SCHEMA);
+            Schema schema = SchemaBuilder.int8().optional().defaultValue(defaultValue).build();
+            builder.field(fieldName, schema);
           } else {
-            builder.field(fieldName, Schema.OPTIONAL_INT16_SCHEMA);
+            Schema schema = SchemaBuilder.int16().optional().defaultValue(defaultValue).build();
+            builder.field(fieldName, schema);
           }
         } else {
           if (metadata.isSigned(col)) {
@@ -153,10 +158,15 @@ public class DataConverter {
       // 16 bit ints
       case Types.SMALLINT: {
         if (optional) {
+          Object defaultValue = Short.parseShort(
+                  getDefaultValue(metadata.getTableName(col), fieldName)
+          );
           if (metadata.isSigned(col)) {
-            builder.field(fieldName, Schema.OPTIONAL_INT16_SCHEMA);
+            Schema schema = SchemaBuilder.int16().optional().defaultValue(defaultValue).build();
+            builder.field(fieldName, schema);
           } else {
-            builder.field(fieldName, Schema.OPTIONAL_INT32_SCHEMA);
+            Schema schema = SchemaBuilder.int32().optional().defaultValue(defaultValue).build();
+            builder.field(fieldName, schema);
           }
         } else {
           if (metadata.isSigned(col)) {

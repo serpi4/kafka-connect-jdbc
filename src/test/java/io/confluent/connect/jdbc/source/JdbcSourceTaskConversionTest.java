@@ -43,7 +43,7 @@ public class JdbcSourceTaskConversionTest extends JdbcSourceTaskTestBase {
   public void setup() throws Exception {
     super.setup();
     Map<String,String> tableConfig = singleTableConfig();
-    tableConfig.put( "column.default.test.id", "false" );
+    tableConfig.put( "column.default.test.id", "0" );
     task.start(tableConfig);
   }
 
@@ -60,10 +60,10 @@ public class JdbcSourceTaskConversionTest extends JdbcSourceTaskTestBase {
 
   @Test
   public void testNullableBoolean() throws Exception {
-    Schema expectedSchema = SchemaBuilder.bool().optional().defaultValue(Boolean.FALSE).build();
+    Schema expectedSchema = SchemaBuilder.bool().optional()./*defaultValue(Boolean.FALSE).*/build();
     typeConversion("BOOLEAN", true, false, expectedSchema, false);
     typeConversion("BOOLEAN", true, true, expectedSchema, true);
-    typeConversion("BOOLEAN", true, null, expectedSchema, false);
+    typeConversion("BOOLEAN", true, null, expectedSchema, /*false*/null);
   }
 
   @Test
@@ -73,9 +73,24 @@ public class JdbcSourceTaskConversionTest extends JdbcSourceTaskTestBase {
 
   @Test
   public void testNullableSmallInt() throws Exception {
-    typeConversion("SMALLINT", true, 1, Schema.OPTIONAL_INT16_SCHEMA, (short) 1);
-    typeConversion("SMALLINT", true, null, Schema.OPTIONAL_INT16_SCHEMA, null);
+    Schema expectedSchema = SchemaBuilder.int16().optional().defaultValue(Short.valueOf((short)0)).build();
+    typeConversion("SMALLINT", true, 1, expectedSchema, (short) 1);
+    typeConversion("SMALLINT", true, null, expectedSchema, (short) 0);
   }
+
+/*
+  @Test
+  public void testTinyInt() throws Exception {
+    typeConversion("TINYINT", false, 1, Schema.INT8_SCHEMA, (byte) 1);
+  }
+
+  @Test
+  public void testNullableTinyInt() throws Exception {
+    Schema expectedSchema = SchemaBuilder.int8().optional().defaultValue(Short.valueOf((short)0)).build();
+    typeConversion("TINYINT", true, 1, expectedSchema, (byte) 1);
+    typeConversion("TINYINT", true, null, expectedSchema, (byte) 0);
+  }
+*/
 
   @Test
   public void testInt() throws Exception {
