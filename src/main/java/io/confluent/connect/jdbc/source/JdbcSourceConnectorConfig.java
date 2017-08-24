@@ -26,6 +26,8 @@ import org.apache.kafka.common.config.ConfigDef.Type;
 import org.apache.kafka.common.config.ConfigDef.Width;
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.config.types.Password;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -33,6 +35,9 @@ import java.sql.SQLException;
 import java.util.*;
 
 public class JdbcSourceConnectorConfig extends AbstractConfig {
+
+  private static final Logger log = LoggerFactory.getLogger(JdbcSourceConnectorConfig.class);
+
 
   public static final String CONNECTION_URL_CONFIG = "connection.url";
   private static final String CONNECTION_URL_DOC = "JDBC connection URL.";
@@ -210,7 +215,6 @@ public class JdbcSourceConnectorConfig extends AbstractConfig {
         return getDefaultColumnValue(tableName, columnName);
       }
     });
-
   }
 
   public static ConfigDef baseConfigDef() {
@@ -260,6 +264,10 @@ public class JdbcSourceConnectorConfig extends AbstractConfig {
     } else
       basicProps.put(e.getKey(), e.getValue());
 
+
+    log.info( "Basic props:  {}", basicProps );
+    log.info( "Extended props:  {}", extProps );
+
     return Arrays.asList(basicProps, extProps);
   }
 
@@ -285,6 +293,7 @@ public class JdbcSourceConnectorConfig extends AbstractConfig {
                 e.getValue()
         );
       }
+    log.info("defaultColumnValues: {}", defaultColumnValues);
   }
 
   public String getDefaultColumnValue( String table, String column ) {

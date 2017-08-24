@@ -16,6 +16,7 @@
 
 package io.confluent.connect.jdbc.source;
 
+import org.apache.kafka.common.utils.CollectionUtils;
 import org.apache.kafka.connect.data.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,6 +31,9 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.SQLXML;
 import java.sql.Types;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.function.Function;
 
 import io.confluent.connect.jdbc.util.DateTimeUtils;
@@ -47,16 +51,17 @@ public class DataConverter {
 
   public static void setDefaultValueProvider(DefaultValueProvider defaultValueProvider) {
     DataConverter.defaultValueProvider.set( defaultValueProvider );
+    log.info("setDefaultValueProvider: {}", defaultValueProvider);
   }
 
   private static ThreadLocal<DefaultValueProvider> defaultValueProvider = new ThreadLocal<DefaultValueProvider>();
 
-  public static Schema convertSchema(String fullname, ResultSetMetaData metadata, boolean mapNumerics)
+  public static Schema convertSchema(String fullname, ResultSetMetaData metadata, boolean mapNumerics, String tableOrQuery)
       throws SQLException {
     // TODO: Detect changes to metadata, which will require schema updates
     SchemaBuilder builder = SchemaBuilder.struct().name(fullname);
     for (int col = 1; col <= metadata.getColumnCount(); col++) {
-      addFieldSchema(metadata, col, builder, mapNumerics);
+      addFieldSchema(metadata, col, builder, mapNumerics, tableOrQuery);
     }
     return builder.build();
   }
@@ -83,6 +88,9 @@ public class DataConverter {
     Object parse(String s);
   }
 
+  private static Set<String> loggedNotFoundDefaults = Collections.synchronizedSet(new HashSet<String>());
+
+
   private static Object getDefaultValue(DefaultValueParser p, String table, String column) {
     DefaultValueProvider defaultValueProvider = DataConverter.defaultValueProvider.get();
     String s = defaultValueProvider.getDefault(table, column);
@@ -90,15 +98,21 @@ public class DataConverter {
     if (null != s) {
       val = p.parse(s);
     } else {
-      log.warn(
-              "No default value found in configuration for table {} and field {}", table, column
-      );
+      String key = String.format("table=%s,column=%s", table, column);
+      if (!loggedNotFoundDefaults.contains(key)) {
+        log.warn(
+                "No default value found in configuration for table {} and field {}", table, column
+        );
+        loggedNotFoundDefaults.add(key);
+      }
     }
     return val;
   }
 
+  private static Set<String> loggedFieldSchemas = Collections.synchronizedSet(new HashSet<String>());
+
   private static void addFieldSchema(ResultSetMetaData metadata, int col,
-                                     SchemaBuilder builder, boolean mapNumerics)
+                                     SchemaBuilder builder, boolean mapNumerics, String tableOrQuery)
       throws SQLException {
     // Label is what the query requested the column name be using an "AS" clause, name is the
     // original
@@ -111,6 +125,16 @@ public class DataConverter {
     if (metadata.isNullable(col) == ResultSetMetaData.columnNullable ||
         metadata.isNullable(col) == ResultSetMetaData.columnNullableUnknown) {
       optional = true;
+    }
+
+    String fieldKey =
+            String.format( "label=%s,name=%s,table=%s,sqlType=%d,optional=%b,scale=%s,precision=%d",
+              label, name, tableOrQuery, sqlType, optional, metadata.getScale(col), metadata.getPrecision(col)
+            ).toLowerCase();
+
+    if (!loggedFieldSchemas.contains(fieldKey)) {
+      log.info("Adding field schema: {}", fieldKey);
+      loggedFieldSchemas.add(fieldKey);
     }
 
     switch (sqlType) {
@@ -141,7 +165,7 @@ public class DataConverter {
                         public Object parse(String s) {
                             return Byte.parseByte(s);
                         }
-                    }, metadata.getTableName(col), fieldName
+                    }, tableOrQuery, fieldName
             );
 
             Schema schema = SchemaBuilder.int8().optional().defaultValue(defaultValue).build();
@@ -160,7 +184,7 @@ public class DataConverter {
                     public Object parse(String s) {
                       return Byte.parseByte(s);
                     }
-                  }, metadata.getTableName(col), fieldName
+                  }, tableOrQuery, fieldName
             );
           if (metadata.isSigned(col)) {
             Schema schema = SchemaBuilder.int8().optional().defaultValue(defaultValue).build();
@@ -188,7 +212,7 @@ public class DataConverter {
                     public Object parse(String s) {
                       return Short.parseShort(s);
                     }
-                  }, metadata.getTableName(col), fieldName
+                  }, tableOrQuery, fieldName
             );
           if (metadata.isSigned(col)) {
             Schema schema = SchemaBuilder.int16().optional().defaultValue(defaultValue).build();
@@ -272,8 +296,19 @@ public class DataConverter {
               schema = (optional) ? Schema.OPTIONAL_INT16_SCHEMA :
                       Schema.INT16_SCHEMA;
             } else {
-              schema = (optional) ? Schema.OPTIONAL_INT8_SCHEMA :
-                      Schema.INT8_SCHEMA;
+              if (optional) {
+                Object defaultValue = getDefaultValue(
+                        new DefaultValueParser() {
+                          @Override
+                          public Object parse(String s) {
+                            return Byte.parseByte(s);
+                          }
+                        }, tableOrQuery, fieldName
+                );
+                schema = SchemaBuilder.int8().optional().defaultValue(defaultValue).build();
+              } else {
+                schema = Schema.INT8_SCHEMA;
+              }
             }
             builder.field(fieldName, schema);
             break;

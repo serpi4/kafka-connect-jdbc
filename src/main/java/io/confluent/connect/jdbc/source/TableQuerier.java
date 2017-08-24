@@ -84,7 +84,7 @@ abstract class TableQuerier implements Comparable<TableQuerier> {
     if (resultSet == null) {
       stmt = getOrCreatePreparedStatement(db);
       resultSet = executeQuery();
-      schema = DataConverter.convertSchema(fullname, resultSet.getMetaData(), mapNumerics);
+      schema = DataConverter.convertSchema(fullname, resultSet.getMetaData(), mapNumerics, name);
     }
   }
 
